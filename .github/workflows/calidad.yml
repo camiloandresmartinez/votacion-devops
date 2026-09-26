@@ -1,0 +1,26 @@
+name: Calidad
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  puertas:
+    name: Puertas de calidad
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preparar variables de entorno
+        run: cp roxs-voting-app/.env.example roxs-voting-app/.env
+
+      - name: Construir las imágenes
+        run: make construir
+
+      - name: Puertas de calidad
+        run: make calidad
