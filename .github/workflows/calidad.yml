@@ -19,8 +19,12 @@ jobs:
       - name: Preparar variables de entorno
         run: cp roxs-voting-app/.env.example roxs-voting-app/.env
 
+      - name: Pruebas automáticas
+        run: make pruebas
+
       - name: Construir las imágenes
         run: make construir
 
       - name: Puertas de calidad
         run: make calidad
+
