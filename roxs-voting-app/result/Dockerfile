@@ -10,7 +10,7 @@ RUN npm ci --omit=dev \
 
 COPY . .
 
-USER node
+USER 1000
 
 EXPOSE 3000
 

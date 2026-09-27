@@ -3,7 +3,7 @@ TRIVY    := docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v triv
 GITLEAKS := docker run --rm -v $(PWD):/repo zricethezav/gitleaks:latest
 HADOLINT := docker run --rm -i hadolint/hadolint hadolint --failure-threshold warning -
 
-.PHONY: ayuda levantar bajar estado logs construir lint secretos vulnerabilidades calidad respaldo
+.PHONY: ayuda levantar bajar estado logs construir lint secretos vulnerabilidades calidad respaldo pruebas
 
 ayuda: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -36,3 +36,8 @@ calidad: lint secretos vulnerabilidades ## Ejecuta TODAS las puertas
 
 respaldo: ## Respalda la base de datos
 	cd roxs-voting-app && docker compose exec -T postgres pg_dump -U postgres -d votes -Fc > ../votes-$$(date +%Y%m%d-%H%M%S).dump
+
+pruebas: ## Ejecuta las pruebas automáticas
+	docker build --target pruebas -t votacion-vote:pruebas roxs-voting-app/vote
+	docker run --rm votacion-vote:pruebas
+
