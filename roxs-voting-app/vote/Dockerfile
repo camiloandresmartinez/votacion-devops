@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 FROM base AS pruebas
-RUN pip install --no-cache-dir pytest
+RUN pip install --no-cache-dir pytest==8.3.4
 CMD ["python", "-m", "pytest", "tests/", "-v"]
 
 FROM base AS produccion

@@ -14,8 +14,8 @@ class TestVote(unittest.TestCase):
 
     def test_muestra_las_dos_opciones(self):
         html = self.cliente.get('/').get_data(as_text=True)
-        self.assertIn('Cats', html)
-        self.assertIn('Dogs', html)
+        self.assertTrue('Cats' in html, "no aparece la opción A en la página")
+        self.assertTrue('Dogs' in html, "no aparece la opción B en la página")
 
     def test_asigna_cookie_de_votante(self):
         respuesta = self.cliente.get('/')
