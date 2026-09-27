@@ -8,7 +8,7 @@ COPY . .
 
 FROM base AS pruebas
 RUN pip install --no-cache-dir pytest==8.3.4
-CMD ["python", "-m", "pytest", "tests/", "-v"]
+CMD ["python", "-m", "pytest", "tests/", "-v", "--tb=short"]
 
 FROM base AS produccion
 RUN useradd --system --no-create-home --uid 1001 vote && chown -R 1001:1001 /app
