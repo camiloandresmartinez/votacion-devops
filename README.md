@@ -1,203 +1,134 @@
+# Voting App — DevOps pipeline
 
-# 🚀 90 Días de DevOps con Roxs
+This is a containerized voting app (Flask, Node.js, Redis and PostgreSQL) from a
+DevOps learning challenge. The application code already existed — what I built is
+everything around it: the images, the deployment automation, and a CI/CD pipeline
+with quality gates that block a merge when something is wrong.
 
-![](https://media.licdn.com/dms/image/v2/D4D16AQF4ND-cC_uxZg/profile-displaybackgroundimage-shrink_350_1400/profile-displaybackgroundimage-shrink_350_1400/0/1731367727725?e=1753920000&v=beta&t=80SZ4IOx4V_VDcCBli7aFjYuMhzMos9SRFq8GnV8zc4)
+## Architecture
 
-[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://docker.com)
-[![Node.js](https://img.shields.io/badge/Node.js-Worker-green?logo=node.js)](https://nodejs.org)
-[![Node.js](https://img.shields.io/badge/Node.js-Result-green?logo=node.js)](https://nodejs.org)
-[![Flask](https://img.shields.io/badge/Flask-Vote-lightgrey?logo=flask)](https://flask.palletsprojects.com/)
-[![Redis](https://img.shields.io/badge/Redis-Cache-red?logo=redis)](https://redis.io)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue?logo=postgresql)](https://postgresql.org)
-[![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-orange?logo=prometheus)](https://prometheus.io)
-[![Grafana](https://img.shields.io/badge/Grafana-Visualization-orange?logo=grafana)](https://grafana.com)
+```
+Browser ──POST──▶ Vote (Flask) ──rpush──▶ Redis ──lpop──▶ Worker (Node)
+                                                              │
+                                                            upsert
+                                                              ▼
+Browser ◀──WebSocket── Result (Node) ◀──select── PostgreSQL (volume)
+```
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/roxsross/roxs-devops-project90)
+A vote is never written directly to the database. The web service pushes it to a
+Redis list and answers in about a millisecond; the worker consumes the queue and
+stores the vote in PostgreSQL. If the worker or the database is down, votes wait
+in the queue instead of being lost.
 
-> **Proyecto educativo de DevOps** creado por **roxsross** para aprender conceptos fundamentales de desarrollo, contenedores, orquestación y monitoreo.
-> ℹ️ Este repositorio parte del [Docker Example Voting App](https://github.com/dockersamples/example-voting-app) y ha sido mejorado y adaptado por **roxsross** para el desafío 90 Días de DevOps.
+| Service    | Stack             | Published port | Notes                          |
+|------------|-------------------|----------------|--------------------------------|
+| vote       | Flask + Gunicorn  | 8091           | Writes to the Redis queue      |
+| result     | Node + Socket.IO  | 3001           | Live results over WebSocket    |
+| worker     | Node              | —              | Consumes the queue             |
+| redis      | redis:7-alpine    | —              | Ephemeral on purpose           |
+| postgres   | postgres:16-alpine| —              | Named volume for the data      |
 
+Redis and PostgreSQL are not published to the host: they are only reachable from
+inside the Compose network.
 
-## 🔥 ¿Por qué sumarte?
+## Quick start
 
-Porque **aprender DevOps no tiene por qué ser aburrido ni costoso**.  
-En este desafío vas a construir, romper y mejorar una app real... **¡con tus propias manos!**  
-Con cada semana vas a aprender algo nuevo, y lo más importante: **vas a aplicarlo al instante**.  
-
-📢 *"Si no lo deployás, no lo aprendiste."* — Roxs
-
-## 📸 Screenshots del Ecosistema ROXS
-
-<div align="center">
-
-| 📦 Aplicación Principal | 📋 Resultados | 📊 🏠 Grafana Home | 🐳 Docker Containers |
-|:---:|:---:|:---:|:---:|
-| <img src="./docs/2.png" width="200"/> | <img src="./docs/1.png" width="200"/> | <img src="./docs/3.png" width="200"/> | <img src="./docs/4.png" width="200"/> |
-| *Sistema de Votación* | *Web Resultados* | *Dash Grafana* | *Contenedores onfire* |
-
-</div>
-
----
-
-## 🧩 Arquitectura de la Aplicación
-
-Este repositorio incluye el código base de una aplicación distribuida, compuesta por tres servicios:
-
-![](./docs/5.png)
-
-- **Vote** : Servicio en Flask que permite votar (🐱 o 🐶) y publica los votos en Redis.
-- **Worker** : Servicio Node.js que consume votos desde Redis y los guarda en PostgreSQL.
-- **Result** : App Node.js que muestra los resultados en tiempo real usando WebSockets.
-
-### 📦 Versiones recomendadas de los servicios
-
-| Servicio | Lenguaje/Framework | Versión recomendada |
-|----------|--------------------|---------------------|
-| Vote     | Flask (Python)     | Python 3.13+, Flask 3.3+ |
-| Worker   | Node.js            | Node.js 20.x+            |
-| Result   | Node.js            | Node.js 20.x+            |
-| Redis    | Redis                | Redis 6.x+                 |
-| PostgreSQL| PostgreSQL          | PostgreSQL 15.x+           |
-
-> ⚠️ Usar versiones iguales o superiores a las recomendadas asegura compatibilidad y soporte con las dependencias del proyecto.
----
-
-## 🛠️ ¿Qué vas a construir?
-
-A lo largo del programa, vos vas a encargarte de:
-
-✅ Crear tus propios archivos `docker-compose.yml`  
-✅ Automatizar la configuración con Ansible  
-✅ Desplegar todo en local usando Terraform Provider Local  
-✅ Crear pipelines CI/CD con GitHub Actions  
-✅ Orquestar la app en Kubernetes  
-✅ Monitorear con Prometheus y Grafana  
-✅ (Opcional) Llevarlo a AWS
-
----
-
-## 📂 Estructura del Repositorio
+You need Docker and Docker Compose. From the repository root:
 
 ```bash
-.
-├── vote/             # Flask app (app.py)
-├── worker/           # Worker Node.js (main.js)
-├── result/           # Resultados en tiempo real (main.js)
-├── views/            # HTML y frontend
-├── load-testing/     # Pruebas de Carga y rendimiento con k6
-├── README.md         # Este archivo ;)
-````
+cd roxs-voting-app
+docker compose up -d --build
+```
 
-> ⚠️ No se incluyen archivos de Docker, Terraform o CI/CD. Vos los vas a construir paso a paso como parte del desafío.
-
----
-
-## 🗓️ Programa Semana a Semana
-
-| Semana | Tema Clave                                 | Proyecto a construir                         |
-| ------ | ------------------------------------------ | -------------------------------------------- |
-| 1      | Linux + Vagrant + Ansible                  | Levantar app sin Docker usando Vagrant       |
-| 2      | Docker y Docker Compose                    | Crear los Dockerfiles y `docker-compose.yml` |
-| 3      | GitHub Actions CI/CD                       | Automatizar builds con self-hosted runner    |
-| 4      | Terraform (Provider Local)                 | Crear infraestructura local con Terraform    |
-| 5      | Kubernetes local con Minikube              | Desplegar app dockerizada en clúster local   |
-| 6      | Despliegue con CI/CD a Kubernetes          | Automatizar despliegues en k8s               |
-| 7      | Seguridad en Contenedores                  | Integrar herramientas de vulnerabilidades    |
-| 8      | Troubleshooting + Performance              | Debug y tuning de recursos                   |
-| 9      | Despliegue en la Nube (EC2/EKS - Opcional) | Llevar tu app a AWS                          |
-
----
-
-## 🤘 ¿Cómo empiezo?
-
-Cloná el repo y seguí el material semanal en el sitio del programa.
+Check that the services are healthy:
 
 ```bash
-git clone https://github.com/roxsross/roxs-devops-project90.git
-cd roxs-devops-project90
+docker compose ps
 ```
 
-El código está listo para que lo personalices, dockerices y automatices.
+Then open the app in your browser:
 
----
+- Vote: <http://localhost:8091>
+- Results: <http://localhost:3001>
 
-## 📈 Bonus: Métricas y Observabilidad
+To stop it without losing data use `docker compose stop`.
+Never use `docker compose down -v` — that deletes the volume and the votes with it.
 
-Todos los servicios están instrumentados con Prometheus. Podrás visualizar las métricas que vos mismo vas a recolectar y graficar con Grafana a partir de la semana 6.
+## Project commands
 
----
-## 💪 Motivación: ¿Por qué hacer este desafío?
+Everything the project does lives in the `Makefile`, so the same commands run on
+a laptop and in CI:
 
-Aprender DevOps puede parecer abrumador. Hay muchas herramientas, conceptos nuevos, y cientos de tutoriales que te dicen por dónde empezar… pero ninguno te lleva de la mano a construir algo real **desde cero**.
-
-Este programa no es teoría vacía. Vas a **construir una app real**, como lo harías en un equipo profesional.
-Acá vas a **equivocarte, arreglar, automatizar, monitorear y desplegar**.
-Y cuando termines, vas a poder decir con orgullo: **yo hice esto** 💥
-
-> 🧠 *"DevOps no se aprende en un curso, se aprende en la práctica. Y este es tu campo de juego."*
-
-
----
-
-
-## 🧰 Recursos complementarios (para cada herramienta)
-
-| Herramienta    | Documentación Oficial                                                                                  | Recurso Recomendado                                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| Docker         | [https://docs.docker.com/](https://docs.docker.com/)                                                   | [Docker Workshop](https://docs.docker.com/get-started/workshop/)                                                        |
-| Ansible        | [https://docs.ansible.com/](https://docs.ansible.com/)                                                 | [Ansible para principiantes](https://developers.redhat.com/products/ansible/getting-started)                         |
-| Terraform      | [https://developer.hashicorp.com/terraform/](https://developer.hashicorp.com/terraform/)               | [Guía de Terraform en español](https://learn.hashicorp.com/terraform)                                       |
-| Kubernetes     | [https://kubernetes.io/docs/home/](https://kubernetes.io/docs/home/)                                   | [Kubernetes The Hard Way (by Kelsey Hightower)](https://github.com/kelseyhightower/kubernetes-the-hard-way) |
-| GitHub Actions | [https://docs.github.com/actions](https://docs.github.com/actions)                                     | [Curso Gratuito GitHub Actions](https://docs.github.com/en/actions/quickstart)                              |
-| Prometheus     | [https://prometheus.io/docs/introduction/overview/](https://prometheus.io/docs/introduction/overview/) | [Observabilidad ](https://opentelemetry.io/es/docs/concepts/observability-primer/)                                   |
-| Grafana        | [https://grafana.com/docs/](https://grafana.com/docs/)                                                 | [Dashboards y Alertas con Grafana](https://grafana.com/tutorials/)                                          |
-| PostgreSQL     | [https://www.postgresql.org/docs/](https://www.postgresql.org/docs/)                                   | [PostgreSQL Tutorial](https://www.postgresqltutorial.com/)                                                  |
-| Redis          | [https://redis.io/docs/](https://redis.io/docs/)                                                       | [Aprendé Redis](https://redis.io/learn/howtos/quick-start)                                                           |
-
-> 🛠️ Tip: Agregá estos links como favoritos, los vas a necesitar cuando te enfrentes a errores reales 😉
-
----
-
-## 🗺️ DevOps Roadmap para Principiantes
-
-```
-✔️ 1. Entender Linux y la terminal
-✔️ 2. Automatizar entornos con Vagrant y Ansible
-✔️ 3. Construir imágenes con Docker
-✔️ 4. Orquestar servicios con Docker Compose
-✔️ 5. Crear pipelines con GitHub Actions
-✔️ 6. Definir infraestructura con Terraform
-✔️ 7. Desplegar en Kubernetes (local)
-✔️ 8. Agregar métricas con Prometheus y Grafana
-✔️ 9. Aprender troubleshooting y performance
-✔️ 🔥 BONUS: Subir tu proyecto a la nube (AWS)
+```bash
+make ayuda              # list every target
+make pruebas            # run the test stage of the vote image
+make calidad            # hadolint + gitleaks + Trivy
+make levantar           # build and start the stack
+make respaldo           # timestamped database dump
 ```
 
-Roadmap que recomiendo seguir [DevOps](https://roadmap.sh/devops)
+## The pipeline
 
-### 🎯 Objetivo final:
+Two workflows run on GitHub Actions.
 
-Tener un **portfolio técnico** completo y práctico, demostrando tus conocimientos en cada área del ciclo de vida DevOps.
+**Calidad** — on every pull request and on `master`:
 
----
+1. **Tests** — pytest, run inside the image's `pruebas` stage.
+2. **Build** — the three images.
+3. **Quality gates** — hadolint (Dockerfile linting), gitleaks (leaked secrets,
+   full git history) and Trivy (critical vulnerabilities with a known fix).
 
-## 📄 Licencia
+The stages are ordered by cost: what fails in seconds runs before what takes a
+minute. `master` is a protected branch, so a pull request cannot be merged while
+this check is red — and the rule applies to the repository owner too.
 
-Este proyecto está licenciado bajo MIT License - ver el archivo [LICENSE](LICENSE) para detalles.
+**Publicar** — only on `master` and on version tags. A matrix builds the three
+services in parallel and pushes them to GHCR with three tags: the commit SHA
+(traceability), the semver version (releases) and `latest`.
 
-## 👨‍💻 Autor
+## Design decisions
 
-**roxsross** - Instructor DevOps y Cloud
+**PostgreSQL uses a named volume.** The votes have to outlive the container: if
+it is deleted and recreated, the data stays. Redis is ephemeral on purpose — it
+is a queue, not a store.
 
-- 🐦 Twitter: [@roxsross](https://twitter.com/roxsross)
-- 🔗 LinkedIn: [roxsross](https://linkedin.com/in/roxsross)
-- ☕ Ko-fi [roxsross](https://ko-fi.com/roxsross)
-- ▶️ Youtube [295devops](https://www.youtube.com/@295devops)
-- 📧 Email: roxs@295devops.com
+**Containers run as an unprivileged user.** If the application is compromised,
+the attacker does not get root inside the container, which limits the blast
+radius.
 
----
+**The runtime images contain no build tools.** The vote image is multi-stage, so
+pytest lives only in the test stage; npm is removed from the Node images after
+`npm ci`. This cut about 150 MB per image and removed a critical CVE that only
+affected a tool nobody runs in production.
 
-> 💡 Si querés sumar este desafío a tu portfolio o como parte de tu onboarding, ¡hacelo con orgullo! 💥
+**Dependencies are installed from a lock file.** `npm ci` and pinned pip versions
+mean the image built today and the image built in three months contain the same
+packages.
 
+**Configuration comes from the environment.** The same image runs locally and in
+production; only the environment changes. Credentials live in a `.env` file that
+is never committed, and `.env.example` documents which variables are needed.
 
+**Health checks, not process checks.** `depends_on` waits for `service_healthy`,
+not for "started", so a service never boots against a database that is not
+accepting connections yet.
 
+## What's missing
+
+- **Continuous Deployment.** The pipeline builds and publishes the images, but
+  nothing deploys them to a server yet. The next step is an Ansible playbook that
+  pulls the published image and restarts the stack.
+- **Unit tests for the worker and result services.** Only the vote service has
+  real tests today.
+- **A quality gate for generated files**, so database dumps and build artifacts
+  cannot be committed by mistake.
+
+## Credits
+
+The application code comes from [roxs-devops-project90](https://github.com/roxsross/roxs-devops-project90)
+by [roxsross](https://github.com/roxsross), which is itself based on the
+[Docker Example Voting App](https://github.com/dockersamples/example-voting-app).
+Licensed under MIT — see `LICENCE`.
+
+The infrastructure, container images, Makefile, workflows and documentation in
+this fork are mine.
