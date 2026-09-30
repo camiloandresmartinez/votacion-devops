@@ -49,7 +49,7 @@ docker compose ps
 Then open the app in your browser:
 
 - Vote: <http://localhost:8091>
-- Results: <http://localhost:3001>
+- Results: <http://localhost:3002>
 
 To stop it without losing data use `docker compose stop`.
 Never use `docker compose down -v` — that deletes the volume and the votes with it.
