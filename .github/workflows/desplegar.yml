@@ -1,0 +1,33 @@
+name: Desplegar
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Etiqueta de la imagen (por ejemplo sha-dac1ce89...)"
+        required: true
+
+jobs:
+  desplegar:
+    runs-on: [self-hosted, despliegue]
+
+    steps:
+      - name: Escribir la contraseña de la bóveda
+        env:
+          VAULT_PW: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          install -m 600 /dev/null "$RUNNER_TEMP/vault.txt"
+          printf '%s' "$VAULT_PW" > "$RUNNER_TEMP/vault.txt"
+
+      - name: Aplicar el playbook
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          ansible-playbook "$HOME/infra/desplegar.yml" \
+            -i "$HOME/infra/inventario.ini" \
+            --vault-password-file "$RUNNER_TEMP/vault.txt" \
+            -e "version_imagen=$VERSION"
+
+      - name: Borrar la contraseña
+        if: always()
+        run: rm -f "$RUNNER_TEMP/vault.txt"
