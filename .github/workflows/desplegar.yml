@@ -1,17 +1,34 @@
 name: Desplegar
 
 on:
+  workflow_run:
+    workflows: ["Publicar"]
+    types: [completed]
+    branches: [master]
   workflow_dispatch:
     inputs:
       version:
-        description: "Etiqueta de la imagen (por ejemplo sha-dac1ce89...)"
-        required: true
+        description: "Etiqueta de la imagen (vacío = la del commit)"
+        required: false
 
 jobs:
   desplegar:
     runs-on: [self-hosted, despliegue]
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
+      - name: Determinar la versión a desplegar
+        id: version
+        env:
+          ENTRADA: ${{ inputs.version }}
+          SHA_PUBLICADO: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [[ -n "$ENTRADA" ]]; then
+            echo "valor=$ENTRADA" >> "$GITHUB_OUTPUT"
+          else
+            echo "valor=sha-$SHA_PUBLICADO" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Escribir la contraseña de la bóveda
         env:
           VAULT_PW: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
@@ -21,7 +38,7 @@ jobs:
 
       - name: Aplicar el playbook
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.version.outputs.valor }}
         run: |
           ansible-playbook "$HOME/infra/desplegar.yml" \
             -i "$HOME/infra/inventario.ini" \
