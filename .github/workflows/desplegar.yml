@@ -41,25 +41,21 @@ jobs:
           VERSION: ${{ steps.version.outputs.valor }}
         run: |
           cd "$HOME/infra"
-          sed -i "s|^version_imagen: .*|version_imagen: $VERSION|" group_vars/produccion/vars.yml
+          yq -i ".version_imagen = \"$VERSION\"" group_vars/produccion/vars.yml
           grep version_imagen group_vars/produccion/vars.yml
 
       - name: Aplicar el playbook
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           ansible-playbook "$HOME/infra/desplegar.yml" \
-            -i "$HOME/infra/inventario.ini" \
+            -i "$HOME/infra/inventories/produccion" \
             --vault-password-file "$RUNNER_TEMP/vault.txt"
 
       - name: Registrar el despliegue en Git
         if: success()
         env:
           VERSION: ${{ steps.version.outputs.valor }}
-        run: |
-          cd "$HOME/infra"
-          git add group_vars/produccion/vars.yml
-          git diff --cached --quiet || git commit -m "Desplegar $VERSION"
-          git push
+        run: "$HOME/infra/scripts/registrar-despliegue.sh \"$VERSION\""
 
       - name: Revertir la versión si el despliegue falló
         if: failure()

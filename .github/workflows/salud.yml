@@ -1,0 +1,28 @@
+name: Salud
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  comprobar:
+    runs-on: [self-hosted, despliegue]
+    steps:
+      - name: Contar los contenedores activos
+        run: |
+          activos=$(docker compose -p votacion-prod ps --status running -q | wc -l)
+          echo "Contenedores activos: $activos de 5"
+          test "$activos" -eq 5
+
+      - name: Comprobar que la votación responde
+        run: curl -fsS --max-time 10 http://localhost:8092/ > /dev/null
+
+      - name: Comprobar que los resultados responden
+        run: curl -fsS --max-time 10 http://localhost:3003/ > /dev/null
+
+      - name: Comprobar el espacio en disco
+        run: |
+          uso=$(df --output=pcent / | tail -1 | tr -dc '0-9')
+          echo "Disco usado: ${uso}%"
+          test "$uso" -lt 85
