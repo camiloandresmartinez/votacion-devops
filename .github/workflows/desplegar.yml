@@ -41,8 +41,8 @@ jobs:
           VERSION: ${{ steps.version.outputs.valor }}
         run: |
           cd "$HOME/infra"
-          yq -i ".version_imagen = \"$VERSION\"" group_vars/produccion/vars.yml
-          grep version_imagen group_vars/produccion/vars.yml
+          yq -i ".version_imagen = \"$VERSION\"" inventories/produccion/group_vars/all/vars.yml
+          grep version_imagen inventories/produccion/group_vars/all/vars.yml
 
       - name: Aplicar el playbook
         run: |
