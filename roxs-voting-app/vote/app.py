@@ -280,5 +280,14 @@ def healthz():
         "database": db_status,
     }), codigo
 
+@app.route("/livez")
+def livez():
+    """Sonda de vida: confirma que el proceso responde.
+
+    No consulta Redis ni PostgreSQL a proposito: si una dependencia
+    externa esta caida, reiniciar este contenedor no arregla nada.
+    """
+    return "ok", 200
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=True, threaded=True)

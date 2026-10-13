@@ -37,5 +37,12 @@ class TestVote(unittest.TestCase):
         self.assertIn('redis', datos)
         self.assertIn('database', datos)
 
+    def test_livez_responde_aunque_no_haya_redis(self):
+        respuesta = self.cliente.get('/livez')
+        self.assertEqual(
+            respuesta.status_code, 200,
+            "livez debe responder 200 mientras el proceso viva, incluso sin dependencias"
+        )
+
 if __name__ == '__main__':
     unittest.main()
