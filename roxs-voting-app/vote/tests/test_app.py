@@ -25,6 +25,17 @@ class TestVote(unittest.TestCase):
         respuesta = self.cliente.post('/', data={'vote': 'a'})
         self.assertEqual(respuesta.status_code, 200)
 
+    def test_healthz_devuelve_503_sin_redis(self):
+        respuesta = self.cliente.get('/healthz')
+        self.assertEqual(
+            respuesta.status_code, 503,
+            "sin Redis, /healthz debe devolver 503 para que el balanceador lo saque"
+        )
+
+    def test_healthz_informa_de_cada_dependencia(self):
+        datos = self.cliente.get('/healthz').get_json()
+        self.assertIn('redis', datos)
+        self.assertIn('database', datos)
 
 if __name__ == '__main__':
     unittest.main()

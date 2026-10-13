@@ -248,35 +248,37 @@ def stats():
 
 @app.route("/healthz")
 def healthz():
-    """Health check endpoint"""
+    """Comprueba las dependencias. Devuelve 503 si falta alguna imprescindible."""
     try:
-        # Test Redis connection
         redis = get_redis()
         redis.ping()
         redis_status = "OK"
         redis_connection_status.set(1)
-    except:
+    except Exception:
         redis_status = "FAILED"
         redis_connection_status.set(0)
-    
+
     try:
-        # Test Database connection
         conn = get_pg_conn()
         if conn:
             conn.close()
             db_status = "OK"
         else:
             db_status = "FAILED"
-    except:
+    except Exception:
         db_status = "FAILED"
-    
+
+    # Redis es imprescindible: sin cola, el voto se pierde en silencio.
+    # PostgreSQL no lo es: solo alimenta /stats y las metricas.
+    codigo = 200 if redis_status == "OK" else 503
+
     return jsonify({
-        "status": "OK",
+        "status": "OK" if codigo == 200 else "DEGRADED",
         "service": "vote-service",
         "hostname": hostname,
         "redis": redis_status,
-        "database": db_status
-    })
+        "database": db_status,
+    }), codigo
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=True, threaded=True)

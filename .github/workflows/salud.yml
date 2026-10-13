@@ -11,9 +11,11 @@ jobs:
     steps:
       - name: Contar los contenedores activos
         run: |
+          compose="$HOME/despliegue/votacion/docker-compose.yml"
+          esperados=$(docker compose -f "$compose" config --services | wc -l)
           activos=$(docker compose -p votacion-prod ps --status running -q | wc -l)
-          echo "Contenedores activos: $activos de 5"
-          test "$activos" -eq 5
+          echo "Contenedores activos: $activos de $esperados"
+          test "$activos" -eq "$esperados"
 
       - name: Comprobar que la votación responde
         run: curl -fsS --max-time 10 http://localhost:8092/ > /dev/null
