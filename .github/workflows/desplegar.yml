@@ -78,7 +78,7 @@ jobs:
         if: success()
         env:
           VERSION: ${{ steps.version.outputs.valor }}
-        run: "$HOME/infra/scripts/registrar-despliegue.sh \"$VERSION\""
+        run: bash "$HOME/infra/scripts/registrar-despliegue.sh" "$VERSION"
 
       - name: Revertir la versión si el despliegue falló
         if: failure()
