@@ -41,7 +41,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.valor }}
         run: |
           cd "$HOME/infra"
-          yq -i ".version_imagen = \"$VERSION\"" inventories/produccion/group_vars/all/vars.yml
+          sed -i "s|^version_imagen: .*|version_imagen: $VERSION|" inventories/produccion/group_vars/all/vars.yml
           grep version_imagen inventories/produccion/group_vars/all/vars.yml
 
       - name: Aplicar el playbook
@@ -72,7 +72,9 @@ jobs:
 
       - name: Revertir la versión si el despliegue falló
         if: failure()
-        run: git -C "$HOME/infra" checkout -- group_vars/produccion/vars.yml
+        run: |
+          cd "$HOME/infra"
+          git checkout -- inventories/produccion/group_vars/all/vars.yml kubernetes/votacion/overlays/laboratorio/kustomization.yml
 
       - name: Borrar la contraseña
         if: always()
