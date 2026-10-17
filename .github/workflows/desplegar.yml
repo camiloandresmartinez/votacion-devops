@@ -51,6 +51,19 @@ jobs:
             -i "$HOME/infra/inventories/produccion" \
             --vault-password-file "$RUNNER_TEMP/vault.txt"
 
+      - name: Desplegar en el clúster de Kubernetes
+        env:
+          VERSION: ${{ steps.version.outputs.valor }}
+        run: |
+          REGISTRO=ghcr.io/camiloandresmartinez/votacion-devops
+          for servicio in vote worker result; do
+            docker pull "$REGISTRO/$servicio:$VERSION"
+            kind load docker-image --name laboratorio "$REGISTRO/$servicio:$VERSION"
+          done
+          sed -i "s|newTag: .*|newTag: $VERSION|" "$HOME/infra/kubernetes/votacion/overlays/laboratorio/kustomization.yml"
+          kubectl apply -k "$HOME/infra/kubernetes/votacion/overlays/laboratorio"
+          kubectl rollout status deployment/vote -n votacion --timeout=150s
+
       - name: Registrar el despliegue en Git
         if: success()
         env:
