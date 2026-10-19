@@ -51,7 +51,9 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.valor }}
         run: |
-          exit 1
+          cd "$HOME/infra"
+          sed -i "s|^version_imagen: .*|version_imagen: $VERSION|" inventories/produccion/group_vars/all/vars.yml
+          grep version_imagen inventories/produccion/group_vars/all/vars.yml
 
       - name: Aplicar el playbook
         id: ansible
