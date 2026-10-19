@@ -28,3 +28,12 @@ jobs:
           uso=$(df --output=pcent / | tail -1 | tr -dc '0-9')
           echo "Disco usado: ${uso}%"
           test "$uso" -lt 85
+      - name: Avisar en Discord si algo falló
+        if: failure()
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ENLACE: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          jq -n --arg enlace "$ENLACE" \
+            '{content: ("🔴 **La votación no está sana**\nFalló la comprobación horaria en producción.\n" + $enlace)}' \
+          | curl -fsS -X POST -H "Content-Type: application/json" -d @- "$WEBHOOK"
