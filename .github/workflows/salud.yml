@@ -8,6 +8,9 @@ on:
 jobs:
   comprobar:
     runs-on: [self-hosted, despliegue]
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Contar los contenedores activos
         run: |
@@ -27,7 +30,7 @@ jobs:
         run: |
           uso=$(df --output=pcent / | tail -1 | tr -dc '0-9')
           echo "Disco usado: ${uso}%"
-          test "$uso" -lt 85
+          test "$uso" -lt 1
       - name: Avisar en Discord si algo falló
         if: failure()
         env:
@@ -36,4 +39,23 @@ jobs:
         run: |
           jq -n --arg enlace "$ENLACE" \
             '{content: ("🔴 **La votación no está sana**\nFalló la comprobación horaria en producción.\n" + $enlace)}' \
+          | curl -fsS -X POST -H "Content-Type: application/json" -d @- "$WEBHOOK"
+
+      - name: Avisar en Discord si se recuperó
+        if: success()
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ENLACE: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ACTUAL: ${{ github.run_id }}
+        run: |
+          anterior=$(gh run list --repo "$REPO" --workflow=salud.yml --limit 10 \
+            --json databaseId,conclusion \
+            | jq -r --argjson actual "$ACTUAL" \
+                '[.[] | select(.databaseId < $actual and .conclusion != "")][0].conclusion // "desconocido"')
+          echo "El run anterior terminó en: $anterior"
+          [[ "$anterior" == "failure" ]] || exit 0
+          jq -n --arg e "$ENLACE" \
+            '{content: ("🟢 **La votación volvió a estar sana**\nLa comprobación horaria pasa de nuevo.\n" + $e)}' \
           | curl -fsS -X POST -H "Content-Type: application/json" -d @- "$WEBHOOK"
