@@ -51,7 +51,7 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.valor }}
         run: |
-          cd "$HOME/infra"
+          exit 1
 
       - name: Aplicar el playbook
         id: ansible
@@ -79,7 +79,7 @@ jobs:
         if: success()
         env:
           VERSION: ${{ steps.version.outputs.valor }}
-        run: bash "$HOME/infra/scripts/no-existe.sh" "$VERSION"
+        run: bash "$HOME/infra/scripts/registrar-despliegue.sh" "$VERSION"
 
       - name: Revertir la versión si el despliegue falló
         if: >-
