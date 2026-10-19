@@ -34,10 +34,11 @@ jobs:
           SHA_PUBLICADO: ${{ github.event.workflow_run.head_sha }}
         run: |
           if [[ -n "$ENTRADA" ]]; then
-            echo "valor=$ENTRADA" >> "$GITHUB_OUTPUT"
+            version="$ENTRADA"
           else
-            echo "valor=sha-$SHA_PUBLICADO" >> "$GITHUB_OUTPUT"
+            version="sha-${SHA_PUBLICADO:?no hay SHA publicado; lanza el flujo indicando la versión}"
           fi
+          echo "valor=$version" >> "$GITHUB_OUTPUT"
 
       - name: Escribir la contraseña de la bóveda
         env:
