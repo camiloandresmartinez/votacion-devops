@@ -47,14 +47,15 @@ jobs:
           printf '%s' "$VAULT_PW" > "$RUNNER_TEMP/vault.txt"
 
       - name: Fijar la versión en el repositorio de infraestructura
+        id: fijar
         env:
           VERSION: ${{ steps.version.outputs.valor }}
         run: |
-          cd "$HOME/infra"
-          sed -i "s|^version_imagen: .*|version_imagen: $VERSION|" inventories/produccion/group_vars/all/vars.yml
-          grep version_imagen inventories/produccion/group_vars/all/vars.yml
+          exit 1
+          cd "$HOME/infra" 
 
       - name: Aplicar el playbook
+        id: ansible
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           ansible-playbook "$HOME/infra/desplegar.yml" \
@@ -62,6 +63,7 @@ jobs:
             --vault-password-file "$RUNNER_TEMP/vault.txt"
 
       - name: Desplegar en el clúster de Kubernetes
+        id: kubernetes
         env:
           VERSION: ${{ steps.version.outputs.valor }}
         run: |
@@ -81,10 +83,35 @@ jobs:
         run: bash "$HOME/infra/scripts/registrar-despliegue.sh" "$VERSION"
 
       - name: Revertir la versión si el despliegue falló
-        if: failure()
+        if: >-
+          failure() && (
+            steps.fijar.outcome == 'failure' ||
+            steps.ansible.outcome == 'failure' ||
+            steps.kubernetes.outcome == 'failure' )
         run: |
           cd "$HOME/infra"
           git checkout -- inventories/produccion/group_vars/all/vars.yml kubernetes/votacion/overlays/laboratorio/kustomization.yml
+
+      - name: Avisar en Discord si algo falló
+        if: failure()
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ENLACE: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          VERSION: ${{ steps.version.outputs.valor }}
+          FIJAR: ${{ steps.fijar.outcome }}
+          ANSIBLE: ${{ steps.ansible.outcome }}
+          KUBERNETES: ${{ steps.kubernetes.outcome }}
+        run: |
+          if [[ "$FIJAR" == "failure" || "$ANSIBLE" == "failure" || "$KUBERNETES" == "failure" ]]; then
+            titulo="🔴 **El despliegue falló**"
+            detalle="Se revirtió la versión. Producción sigue con la anterior."
+          else
+            titulo="🟠 **Desplegado, pero Git no quedó registrado**"
+            detalle="Producción corre $VERSION y el repositorio no lo refleja. Hay que arreglarlo a mano."
+          fi
+          jq -n --arg t "$titulo" --arg d "$detalle" --arg e "$ENLACE" \
+            '{content: ($t + "\n" + $d + "\n" + $e)}' \
+          | curl -fsS -X POST -H "Content-Type: application/json" -d @- "$WEBHOOK"
 
       - name: Borrar la contraseña
         if: always()
