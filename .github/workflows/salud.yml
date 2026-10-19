@@ -27,7 +27,7 @@ jobs:
         run: |
           uso=$(df --output=pcent / | tail -1 | tr -dc '0-9')
           echo "Disco usado: ${uso}%"
-          test "$uso" -lt 1
+          test "$uso" -lt 85
       - name: Avisar en Discord si algo falló
         if: failure()
         env:
