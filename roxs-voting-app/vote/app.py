@@ -137,12 +137,27 @@ def update_database_metrics():
         app.logger.error(f'Error updating database metrics: {e}')
         database_connection_status.set(0)
 
+def update_redis_metrics():
+    """Comprueba Redis con reloj propio.
+
+    No usa get_redis() a proposito: aquella cachea la conexion en `g`
+    y solo se ejecuta cuando pasa un usuario. Aqui abrimos una conexion
+    nueva cada vez, que es lo que de verdad hace un cliente al llegar.
+    """
+    try:
+        Redis(host=REDIS, db=0, socket_timeout=2).ping()
+        redis_connection_status.set(1)
+    except Exception as e:
+        app.logger.error(f'Redis no responde: {e}')
+        redis_connection_status.set(0)
+
 def metrics_updater():
     """Background thread to update metrics every 10 seconds"""
     while True:
         try:
             with app.app_context():
                 update_database_metrics()
+            update_redis_metrics()
             time.sleep(10)  # Update every 10 seconds
         except Exception as e:
             app.logger.error(f'Error in metrics updater: {e}')
